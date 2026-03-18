@@ -97,8 +97,8 @@ describe('AlphabetFeedback', () => {
     const tStyle = t.getAttribute('style') ?? t.parentElement?.getAttribute('style') ?? ''
     // JSDOM normalizes hex colors to rgb()
     expect(wStyle).toContain('rgb(22, 163, 74)')   // #16a34a = correct
-    expect(aStyle).toContain('rgb(217, 119, 6)')   // #d97706 = present
-    expect(tStyle).toContain('rgb(209, 213, 219)')  // #d1d5db = absent
+    expect(aStyle).toContain('rgb(202, 138, 4)')   // #ca8a04 = present
+    expect(tStyle).toContain('rgb(26, 26, 26)')    // #1a1a1a = absent
   })
 
   it('6 — i chip non hanno onClick (solo visualizzazione)', () => {

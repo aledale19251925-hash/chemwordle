@@ -7,12 +7,12 @@ interface AlphabetFeedbackProps {
 const ROW1 = 'ABCDEFGHIJKLM'.split('')
 const ROW2 = 'NOPQRSTUVWXYZ'.split('')
 
-const STATUS_COLORS: Record<string, { background: string; color: string }> = {
+const STATUS_COLORS: Record<string, { background: string; color: string; border?: string }> = {
   correct: { background: '#16a34a', color: '#ffffff' },
-  present: { background: '#d97706', color: '#ffffff' },
-  absent:  { background: '#d1d5db', color: '#9ca3af' },
+  present: { background: '#ca8a04', color: '#ffffff' },
+  absent:  { background: '#1a1a1a', color: '#666666' },
 }
-const DEFAULT_COLORS = { background: '#e5e7eb', color: '#6b7280' }
+const DEFAULT_COLORS = { background: '#3a3a3a', color: '#ffffff', border: '1px solid #555' }
 
 function LetterChip({ letter, status }: { letter: string; status?: LetterStatus }) {
   const colors = status ? (STATUS_COLORS[status] ?? DEFAULT_COLORS) : DEFAULT_COLORS
@@ -25,6 +25,7 @@ function LetterChip({ letter, status }: { letter: string; status?: LetterStatus 
         fontSize: '0.65rem', fontWeight: 700,
         background: colors.background,
         color: colors.color,
+        border: colors.border ?? 'none',
         transition: 'background 0.3s, color 0.3s',
         userSelect: 'none',
       }}

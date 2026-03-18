@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useGame } from './hooks/useGame'
+import { useOnboarding } from './hooks/useOnboarding'
 import { getDailyMolecule } from './data/molecules'
 import { Header } from './components/Header'
 import { GameBoard } from './components/GameBoard'
@@ -9,6 +10,7 @@ import { StatsModal } from './components/StatsModal'
 import { HelpModal } from './components/HelpModal'
 import { MoleculeViewer3D } from './components/MoleculeViewer3D'
 import { AlphabetFeedback } from './components/AlphabetFeedback'
+import { OnboardingModal } from './components/OnboardingModal'
 
 export default function App() {
 
@@ -34,6 +36,7 @@ export default function App() {
 
   // ── Stato locale: Help modal ────────────────────────────
   const [rulesOpen, setRulesOpen] = useState(false)
+  const { showOnboarding, dismissOnboarding } = useOnboarding()
 
   // ── Dati derivati ───────────────────────────────────────
   const mol = getDailyMolecule()
@@ -48,7 +51,8 @@ export default function App() {
         height: '100dvh',
         display: 'flex',
         flexDirection: 'column',
-        background: '#f8fdf8',
+        background: '#111111',
+        color: '#ffffff',
         overflow: 'hidden',
       }}
       onClick={() => {
@@ -92,6 +96,9 @@ export default function App() {
           }
         }}
       />
+
+      {/* ── ONBOARDING ── */}
+      {showOnboarding && <OnboardingModal onDismiss={dismissOnboarding} />}
 
       {/* ── HEADER ── */}
       <Header

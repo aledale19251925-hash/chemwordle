@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { MoleculeCard } from './MoleculeCard'
 import { buildShareText } from '../utils/gameLogic'
 import { WIN_MESSAGES } from '../utils/messages'
+import { getMidnightCountdown } from '../utils/countdown'
 import type { Molecule, Stats, GameState } from '../types'
 
 interface ModalProps {
@@ -14,24 +15,13 @@ interface ModalProps {
   onClose: () => void
 }
 
-function getTimeUntilLocalMidnight(): string {
-  const now = new Date()
-  const next = new Date(now)
-  next.setHours(24, 0, 0, 0)
-  const diff = next.getTime() - now.getTime()
-  const h = Math.floor(diff / 3600000).toString().padStart(2, '0')
-  const m = Math.floor((diff % 3600000) / 60000).toString().padStart(2, '0')
-  const s = Math.floor((diff % 60000) / 1000).toString().padStart(2, '0')
-  return `${h}:${m}:${s}`
-}
-
 export function Modal({ visible, gameStatus, molecule, stats, gameState, onClose }: ModalProps) {
-  const [countdown, setCountdown] = useState(getTimeUntilLocalMidnight)
+  const [countdown, setCountdown] = useState(getMidnightCountdown)
   const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     if (!visible) return
-    const id = setInterval(() => setCountdown(getTimeUntilLocalMidnight()), 1000)
+    const id = setInterval(() => setCountdown(getMidnightCountdown()), 1000)
     return () => clearInterval(id)
   }, [visible])
 
@@ -73,8 +63,8 @@ export function Modal({ visible, gameStatus, molecule, stats, gameState, onClose
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
             onClick={e => e.stopPropagation()}
             style={{
-              backgroundColor: '#0c160c',
-              border: '1px solid #1a2a1a',
+              backgroundColor: '#1e1e1e',
+              border: '1px solid #3a3a3a',
               borderRadius: 16,
               padding: 24,
               width: '100%',

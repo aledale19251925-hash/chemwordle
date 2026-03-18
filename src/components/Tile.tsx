@@ -11,16 +11,15 @@ interface TileProps {
 
 const COLORS: Record<string, { bg: string; border: string; color: string }> = {
   correct: { bg: '#16a34a', border: '#16a34a', color: '#ffffff' },
-  present: { bg: '#d97706', border: '#d97706', color: '#ffffff' },
-  absent:  { bg: '#e5e7eb', border: '#e5e7eb', color: '#9ca3af' },
-  current: { bg: '#ffffff', border: '#16a34a', color: '#1a1a1a' },
-  empty:   { bg: '#ffffff', border: '#d1d5db', color: '#1a1a1a' },
+  present: { bg: '#ca8a04', border: '#ca8a04', color: '#ffffff' },
+  absent:  { bg: '#3a3a3a', border: '#3a3a3a', color: '#ffffff' },
+  current: { bg: '#1e1e1e', border: '#888888', color: '#ffffff' },
+  empty:   { bg: 'transparent', border: '#2a2a2a', color: 'transparent' },
 }
 
 export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TileProps) {
   const isResult = status === 'correct' || status === 'present' || status === 'absent'
 
-  // Start revealed=true if mounted with a result status (loaded state — no flip animation)
   const [revealed, setRevealed] = useState(() => isResult)
   const prevStatusRef = useRef<TileProps['status']>(status)
 
@@ -30,7 +29,6 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
 
     if (status === 'correct' || status === 'present' || status === 'absent') {
       if ((prev === 'empty' || prev === 'current') && !revealed) {
-        // Tile transitioning from input → result: schedule color reveal mid-flip
         const t = setTimeout(() => setRevealed(true), delay * 120 + 250)
         return () => clearTimeout(t)
       }
@@ -40,12 +38,12 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
     }
   }, [status]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Space separator — hooks must come before early returns
+  // Space separator
   if (status === 'space' || letter === ' ') {
     return (
       <div
         data-testid="tile"
-        style={{ width: 52, height: 52, background: '#f3f4f6', borderRadius: 8 }}
+        style={{ width: 52, height: 52, background: '#111111', borderRadius: 8 }}
       />
     )
   }
@@ -53,6 +51,13 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
   const c = revealed ? (COLORS[status] ?? COLORS.empty) : COLORS.empty
   const isPulse = isCurrentRow && status === 'empty' && letter === ''
   const isFlipping = isResult && !revealed
+
+  // Active tile (has letter, current row, not yet submitted)
+  const activeStyle = letter && status === 'current'
+    ? { bg: '#1e1e1e', border: '#888888', color: '#ffffff' }
+    : null
+
+  const displayColors = activeStyle ?? c
 
   return (
     <motion.div
@@ -63,7 +68,7 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
           : letter && status === 'current'
           ? { scale: [1, 1.12, 1] }
           : isPulse
-          ? { borderColor: ['#d1d5db', '#16a34a', '#d1d5db'] }
+          ? { borderColor: ['#2a2a2a', '#555555', '#2a2a2a'] }
           : {}
       }
       transition={
@@ -80,9 +85,9 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        border: `2px solid ${c.border}`,
-        backgroundColor: c.bg,
-        color: c.color,
+        border: `2px solid ${displayColors.border}`,
+        backgroundColor: displayColors.bg,
+        color: displayColors.color,
         fontSize: '1.2rem',
         fontWeight: 900,
         letterSpacing: '0.05em',

@@ -1,4 +1,6 @@
 import { AnimatePresence, motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
+import { getMidnightCountdown } from '../utils/countdown'
 import type { Stats, GameState } from '../types'
 
 interface StatsModalProps {
@@ -9,6 +11,13 @@ interface StatsModalProps {
 }
 
 export function StatsModal({ visible, stats, onClose, currentGameState }: StatsModalProps) {
+  const [countdown, setCountdown] = useState(getMidnightCountdown)
+  useEffect(() => {
+    if (!visible) return
+    const id = setInterval(() => setCountdown(getMidnightCountdown()), 1000)
+    return () => clearInterval(id)
+  }, [visible])
+
   const dist = stats.guessDistribution // number[] length 6, index 0 = won in 1 guess
   const maxCount = Math.max(1, ...dist)
   const winPct = stats.gamesPlayed > 0
@@ -42,8 +51,8 @@ export function StatsModal({ visible, stats, onClose, currentGameState }: StatsM
             transition={{ type: 'spring', stiffness: 320, damping: 28 }}
             onClick={e => e.stopPropagation()}
             style={{
-              backgroundColor: '#0c160c',
-              border: '1px solid #1a2a1a',
+              backgroundColor: '#1e1e1e',
+              border: '1px solid #3a3a3a',
               borderRadius: 16,
               padding: 24,
               width: '100%',
@@ -114,6 +123,19 @@ export function StatsModal({ visible, stats, onClose, currentGameState }: StatsM
                 </div>
               )
             })}
+
+            {/* Countdown */}
+            <div style={{ marginTop: 20, paddingTop: 16, borderTop: '1px solid #2a2a2a', textAlign: 'center' }}>
+              <p style={{ color: '#aaaaaa', fontSize: '0.8rem', margin: '0 0 6px 0' }}>
+                Prossima molecola in
+              </p>
+              <p style={{
+                color: '#ffffff', fontSize: '1.8rem', fontWeight: 700,
+                fontVariantNumeric: 'tabular-nums', letterSpacing: '0.05em', margin: 0,
+              }}>
+                {countdown}
+              </p>
+            </div>
           </motion.div>
         </motion.div>
       )}
