@@ -1,9 +1,7 @@
 import type { GameState, Stats } from '../types';
-import { getDayIndex } from './gameLogic';
-import { getDailyMolecule, findMoleculeByName } from '../data/molecules';
-import { EMPTY_STATS } from './gameLogic';
+import { getDayIndex, EMPTY_STATS } from './gameLogic';
 
-const SCHEMA_VERSION = '1.0';
+const SCHEMA_VERSION = '2.0';
 
 const KEYS = {
   state: 'chemwordle-state',
@@ -27,18 +25,24 @@ function versionOk(parsed: Record<string, unknown>): boolean {
 type PersistedState = {
   _v: string;
   dayIndex: number;
-  guesses: string[];
-  feedbacks: unknown;
+  answer: string;
+  lockedLetters: (string | null)[];
+  attemptNumber: number;
+  maxAttempts: number;
   status: string;
+  guessHistory: unknown;
 };
 
 export function saveGameState(state: GameState): void {
   try {
     const payload = withVersion({
-      dayIndex:  state.dayIndex,
-      guesses:   state.guesses,
-      feedbacks: state.feedbacks,
-      status:    state.status,
+      dayIndex:      state.dayIndex,
+      answer:        state.answer,
+      lockedLetters: state.lockedLetters,
+      attemptNumber: state.attemptNumber,
+      maxAttempts:   state.maxAttempts,
+      status:        state.status,
+      guessHistory:  state.guessHistory,
     });
     localStorage.setItem(KEYS.state, JSON.stringify(payload));
   } catch (error) {
@@ -63,20 +67,15 @@ export function loadGameState(): GameState | null {
     // Stale day check
     if (parsed.dayIndex !== getDayIndex()) return null;
 
-    // Reconstruct derived fields
-    const target = getDailyMolecule().normalized_name;
-    const status = parsed.status as GameState['status'];
-    const revealedMolecule = status !== 'playing'
-      ? (findMoleculeByName(target) ?? null)
-      : null;
-
     return {
-      dayIndex: parsed.dayIndex,
-      target,
-      guesses:   parsed.guesses,
-      feedbacks: parsed.feedbacks as GameState['feedbacks'],
-      status,
-      revealedMolecule,
+      dayIndex:      parsed.dayIndex,
+      answer:        parsed.answer,
+      lockedLetters: parsed.lockedLetters,
+      attemptNumber: parsed.attemptNumber,
+      maxAttempts:   parsed.maxAttempts,
+      status:        parsed.status as GameState['status'],
+      guessHistory:  parsed.guessHistory as GameState['guessHistory'],
+      moleculeData:  null,
     };
   } catch (error) {
     console.error('[ChemWordle storage] loadGameState failed:', error);

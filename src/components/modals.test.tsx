@@ -58,29 +58,35 @@ const WON_STATS: Stats = {
   currentStreak: 3,
   bestStreak: 5,
   guessDistribution: [1, 2, 3, 1, 0, 0],
-  lastPlayedDate: '2026-03-18',
+  lastPlayedDate: '2026-03-19',
 }
 
 const wonGameState: GameState = {
   dayIndex: 42,
-  target: 'WATER',
-  guesses: ['WATER'],
-  feedbacks: [[
-    { letter: 'W', status: 'correct' },
-    { letter: 'A', status: 'correct' },
-    { letter: 'T', status: 'correct' },
-    { letter: 'E', status: 'correct' },
-    { letter: 'R', status: 'correct' },
-  ]],
+  answer: 'WATER',
+  lockedLetters: ['W', 'A', 'T', 'E', 'R'],
+  attemptNumber: 1,
+  maxAttempts: 5,
   status: 'won',
-  revealedMolecule: baseMol,
+  guessHistory: [{
+    guess: 'WATER',
+    results: ['correct', 'correct', 'correct', 'correct', 'correct'],
+  }],
+  moleculeData: null,
 }
 
 const lostGameState: GameState = {
   ...wonGameState,
-  guesses: ['AAAAA', 'BBBBB', 'CCCCC', 'DDDDD', 'EEEEE', 'FFFFF'],
-  feedbacks: Array(6).fill([{ letter: 'A', status: 'absent' }]),
+  lockedLetters: [null, null, null, null, null],
+  attemptNumber: 5,
   status: 'lost',
+  guessHistory: [
+    { guess: 'AAAAA', results: ['absent', 'absent', 'absent', 'absent', 'absent'] },
+    { guess: 'BBBBB', results: ['absent', 'absent', 'absent', 'absent', 'absent'] },
+    { guess: 'CCCCC', results: ['absent', 'absent', 'absent', 'absent', 'absent'] },
+    { guess: 'DDDDD', results: ['absent', 'absent', 'absent', 'absent', 'absent'] },
+    { guess: 'EEEEE', results: ['absent', 'absent', 'absent', 'absent', 'absent'] },
+  ],
 }
 
 // ── Gruppo 1: Modal (result) ───────────────────────────────────────────────────
@@ -117,7 +123,7 @@ describe('Modal', () => {
 
   it('5 — mostra WIN_MESSAGE Genius! per 1 guess', () => {
     render(<Modal {...defaultProps} />)
-    // wonGameState has 1 guess → WIN_MESSAGES[1] = 'Genius!'
+    // wonGameState has 1 entry in guessHistory → WIN_MESSAGES[1] = 'Genius!'
     expect(screen.getByText(/Genius!/)).toBeInTheDocument()
   })
 

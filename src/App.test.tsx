@@ -5,34 +5,42 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 
 vi.mock('./hooks/useGame', () => ({ useGame: vi.fn() }))
 vi.mock('./data/molecules', () => ({
-  getDailyMolecule: vi.fn(() => ({ pubchem_cid: 962, display_name: 'Water' })),
+  getDailyMolecule: vi.fn(() => ({ pubchem_cid: 962, display_name: 'Water', formula: 'H2O' })),
 }))
-vi.mock('./components/Header',          () => ({ Header:          vi.fn(() => <div data-testid="header" />) }))
-vi.mock('./components/GameBoard',       () => ({ GameBoard:       vi.fn(() => <div data-testid="gameboard" />) }))
-vi.mock('./components/Toast',           () => ({ Toast:           vi.fn(() => <div data-testid="toast" />) }))
-vi.mock('./components/Modal',           () => ({ Modal:           vi.fn(() => <div data-testid="modal" />) }))
-vi.mock('./components/StatsModal',      () => ({ StatsModal:      vi.fn(() => <div data-testid="statsmodal" />) }))
-vi.mock('./components/HelpModal',       () => ({ HelpModal:       vi.fn(() => <div data-testid="helpmodal" />) }))
+vi.mock('./utils/pubchem', () => ({
+  getAtomTypesFromFormula: vi.fn(() => []),
+}))
+vi.mock('./components/Header',           () => ({ Header:           vi.fn(() => <div data-testid="header" />) }))
+vi.mock('./components/SingleRowBoard',   () => ({ SingleRowBoard:   vi.fn(() => <div data-testid="single-row-board" />) }))
+vi.mock('./components/AtomLegend',       () => ({ AtomLegend:       vi.fn(() => <div data-testid="atom-legend" />) }))
+vi.mock('./components/Toast',            () => ({ Toast:            vi.fn(() => <div data-testid="toast" />) }))
+vi.mock('./components/Modal',            () => ({ Modal:            vi.fn(() => <div data-testid="modal" />) }))
+vi.mock('./components/StatsModal',       () => ({ StatsModal:       vi.fn(() => <div data-testid="statsmodal" />) }))
+vi.mock('./components/HelpModal',        () => ({ HelpModal:        vi.fn(() => <div data-testid="helpmodal" />) }))
 vi.mock('./components/MoleculeViewer3D', () => ({ MoleculeViewer3D: vi.fn(() => <div data-testid="molecule-viewer" />) }))
-vi.mock('./components/AlphabetFeedback', () => ({ AlphabetFeedback: vi.fn(() => <div data-testid="alphabet-feedback" />) }))
 
 import { useGame } from './hooks/useGame'
 import { Header } from './components/Header'
-import { GameBoard } from './components/GameBoard'
+import { SingleRowBoard } from './components/SingleRowBoard'
 import { Toast } from './components/Toast'
 import { Modal } from './components/Modal'
 import { StatsModal } from './components/StatsModal'
 import { HelpModal } from './components/HelpModal'
 import { MoleculeViewer3D } from './components/MoleculeViewer3D'
-import { AlphabetFeedback } from './components/AlphabetFeedback'
 import App from './App'
 
 // ── Base mock return ───────────────────────────────────────────────────────────
 
 const baseReturn = {
   gameState: {
-    target: 'WATER', guesses: [], feedbacks: [], status: 'playing',
-    dayIndex: 42, revealedMolecule: null,
+    answer: 'WATER',
+    lockedLetters: [null, null, null, null, null],
+    attemptNumber: 0,
+    maxAttempts: 5,
+    guessHistory: [],
+    status: 'playing',
+    dayIndex: 42,
+    moleculeData: null,
   },
   stats: {
     gamesPlayed: 5, gamesWon: 4, currentStreak: 2, bestStreak: 3,
@@ -40,13 +48,10 @@ const baseReturn = {
   },
   currentGuess: ['', '', '', '', ''],
   invalidRow: -1,
-  revealingRow: -1,
-  bounceRow: -1,
   toastMessage: null,
   toastFading: false,
   showModal: false,
   showStatsModal: false,
-  keyboardStatuses: {},
   soundEnabled: true,
   toggleSound: vi.fn(),
   addLetter: vi.fn(),
@@ -56,62 +61,48 @@ const baseReturn = {
   closeModal: vi.fn(),
   openStatsModal: vi.fn(),
   closeStatsModal: vi.fn(),
+  inputRef: { current: null },
 }
 
 beforeEach(() => {
   ;(useGame as any).mockReturnValue(baseReturn)
   vi.mocked(Header).mockClear()
-  vi.mocked(GameBoard).mockClear()
+  vi.mocked(SingleRowBoard).mockClear()
   vi.mocked(Toast).mockClear()
   vi.mocked(Modal).mockClear()
   vi.mocked(StatsModal).mockClear()
   vi.mocked(HelpModal).mockClear()
   vi.mocked(MoleculeViewer3D).mockClear()
-  vi.mocked(AlphabetFeedback).mockClear()
 })
 
 describe('App', () => {
   it('1 — tutti i componenti principali renderizzati', () => {
     render(<App />)
     expect(screen.getByTestId('header')).toBeInTheDocument()
-    expect(screen.getByTestId('gameboard')).toBeInTheDocument()
+    expect(screen.getByTestId('single-row-board')).toBeInTheDocument()
     expect(screen.getByTestId('toast')).toBeInTheDocument()
     expect(screen.getByTestId('molecule-viewer')).toBeInTheDocument()
-    expect(screen.getByTestId('alphabet-feedback')).toBeInTheDocument()
+    expect(screen.getByTestId('atom-legend')).toBeInTheDocument()
   })
 
-  it('2 — Keyboard NON presente (rimosso in Step 11)', () => {
+  it('2 — GameBoard NON presente (sostituito da SingleRowBoard in Step 13)', () => {
     render(<App />)
-    expect(screen.queryByTestId('keyboard')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('gameboard')).not.toBeInTheDocument()
   })
 
-  it('3 — invalidGuess = false quando invalidRow = -1', () => {
-    ;(useGame as any).mockReturnValue({ ...baseReturn, invalidRow: -1 })
+  it('3 — AlphabetFeedback NON presente (rimosso in Step 13)', () => {
     render(<App />)
-    expect(vi.mocked(GameBoard)).toHaveBeenCalledWith(
-      expect.objectContaining({ invalidGuess: false }), expect.anything()
-    )
+    expect(screen.queryByTestId('alphabet-feedback')).not.toBeInTheDocument()
   })
 
-  it('4 — invalidGuess = true quando invalidRow = currentRowIndex', () => {
-    ;(useGame as any).mockReturnValue({
-      ...baseReturn, invalidRow: 0,
-      gameState: { ...baseReturn.gameState, guesses: [] },
-    })
-    render(<App />)
-    expect(vi.mocked(GameBoard)).toHaveBeenCalledWith(
-      expect.objectContaining({ invalidGuess: true }), expect.anything()
-    )
-  })
-
-  it('5 — HelpModal non visibile all\'inizio', () => {
+  it('4 — HelpModal non visibile all\'inizio', () => {
     render(<App />)
     expect(vi.mocked(HelpModal)).toHaveBeenCalledWith(
       expect.objectContaining({ visible: false }), expect.anything()
     )
   })
 
-  it('6 — HelpModal apre quando Header chiama onHelpClick', () => {
+  it('5 — HelpModal apre quando Header chiama onHelpClick', () => {
     render(<App />)
     const headerCall = vi.mocked(Header).mock.calls[0][0]
     act(() => headerCall.onHelpClick())
@@ -120,7 +111,7 @@ describe('App', () => {
     )
   })
 
-  it('7 — HelpModal chiude quando onClose viene chiamata', () => {
+  it('6 — HelpModal chiude quando onClose viene chiamata', () => {
     render(<App />)
     const headerCall = vi.mocked(Header).mock.calls[0][0]
     act(() => headerCall.onHelpClick())
@@ -132,7 +123,7 @@ describe('App', () => {
     )
   })
 
-  it('8 — StatsModal visibile quando showStatsModal = true', () => {
+  it('7 — StatsModal visibile quando showStatsModal = true', () => {
     ;(useGame as any).mockReturnValue({ ...baseReturn, showStatsModal: true })
     render(<App />)
     expect(vi.mocked(StatsModal)).toHaveBeenCalledWith(
@@ -140,7 +131,7 @@ describe('App', () => {
     )
   })
 
-  it('9 — Modal visibile quando showModal = true e status won', () => {
+  it('8 — Modal visibile quando showModal = true e status won', () => {
     ;(useGame as any).mockReturnValue({
       ...baseReturn,
       showModal: true,
@@ -152,7 +143,7 @@ describe('App', () => {
     )
   })
 
-  it('10 — Modal NON visibile quando showModal = true ma status = playing', () => {
+  it('9 — Modal NON visibile quando showModal = true ma status = playing', () => {
     ;(useGame as any).mockReturnValue({
       ...baseReturn,
       showModal: true,
@@ -164,7 +155,7 @@ describe('App', () => {
     )
   })
 
-  it('11 — Toast riceve toastMessage e toastFading', () => {
+  it('10 — Toast riceve toastMessage e toastFading', () => {
     ;(useGame as any).mockReturnValue({ ...baseReturn, toastMessage: 'Genius!', toastFading: false })
     render(<App />)
     expect(vi.mocked(Toast)).toHaveBeenCalledWith(
@@ -172,19 +163,20 @@ describe('App', () => {
     )
   })
 
-  it('12 — AlphabetFeedback riceve keyboardStatuses', () => {
-    const keyboardStatuses = { W: 'correct' as const }
-    ;(useGame as any).mockReturnValue({ ...baseReturn, keyboardStatuses })
-    render(<App />)
-    expect(vi.mocked(AlphabetFeedback)).toHaveBeenCalledWith(
-      expect.objectContaining({ keyStatuses: keyboardStatuses }), expect.anything()
-    )
-  })
-
-  it('13 — MoleculeViewer3D riceve pubchemCid dalla molecola del giorno', () => {
+  it('11 — MoleculeViewer3D riceve pubchemCid dalla molecola del giorno', () => {
     render(<App />)
     expect(vi.mocked(MoleculeViewer3D)).toHaveBeenCalledWith(
       expect.objectContaining({ pubchemCid: 962 }), expect.anything()
+    )
+  })
+
+  it('12 — SingleRowBoard riceve answer e lockedLetters', () => {
+    render(<App />)
+    expect(vi.mocked(SingleRowBoard)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        answer: 'WATER',
+        lockedLetters: [null, null, null, null, null],
+      }), expect.anything()
     )
   })
 })

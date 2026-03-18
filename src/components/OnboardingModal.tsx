@@ -36,7 +36,7 @@ export function OnboardingModal({ onDismiss }: OnboardingModalProps) {
         </h2>
         <p style={{ color: '#cccccc', fontSize: '0.9rem', textAlign: 'center', margin: '0 0 20px', lineHeight: 1.5 }}>
           Osserva la molecola 3D e indovina il nome del composto chimico.
-          Hai <strong style={{ color: '#fff' }}>6 tentativi</strong>.
+          Hai <strong style={{ color: '#fff' }}>5 tentativi</strong>.
         </p>
 
         <div style={{ marginBottom: '20px' }}>

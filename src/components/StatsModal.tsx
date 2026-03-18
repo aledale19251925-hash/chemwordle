@@ -24,7 +24,7 @@ export function StatsModal({ visible, stats, onClose, currentGameState }: StatsM
     ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
     : 0
   // Which row to highlight (0-indexed guess count - 1), only if game is won today
-  const highlightIdx = currentGameState.status === 'won' ? currentGameState.guesses.length - 1 : -1
+  const highlightIdx = currentGameState.status === 'won' ? currentGameState.guessHistory.length - 1 : -1
 
   return (
     <AnimatePresence>

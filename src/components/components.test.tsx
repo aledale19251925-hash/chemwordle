@@ -70,11 +70,16 @@ const EMPTY_STATS: Stats = {
 
 const baseGameState: GameState = {
   dayIndex: 1,
-  target: 'WATER',
-  guesses: [],
-  feedbacks: [],
+  answer: 'WATER',
+  lockedLetters: ['W', 'A', 'T', 'E', 'R'],
+  attemptNumber: 1,
+  maxAttempts: 5,
   status: 'won',
-  revealedMolecule: baseMol,
+  guessHistory: [{
+    guess: 'WATER',
+    results: ['correct', 'correct', 'correct', 'correct', 'correct'],
+  }],
+  moleculeData: null,
 }
 
 // ── Gruppo 1: Tile ────────────────────────────────────────────────────────────

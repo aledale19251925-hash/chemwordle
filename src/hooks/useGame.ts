@@ -1,39 +1,24 @@
-import { useState, useEffect, useCallback, useMemo, useRef, type RefObject } from 'react'
+import { useState, useEffect, useCallback, useRef, type RefObject } from 'react'
 import { getDailyMolecule } from '../data/molecules'
 import { isValidGuess } from '../data/validWords'
 import {
-  computeFeedback, getKeyboardStatuses, normalizeInput,
-  updateStats, buildInitialGameState,
+  evaluateGuess, getLockedLetters, initCurrentGuess, normalizeInput,
+  updateStats, buildInitialGameState, MAX_ATTEMPTS,
 } from '../utils/gameLogic'
 import { loadGameState, saveGameState, loadStats, saveStats } from '../utils/storage'
 import { useSounds } from './useSounds'
 import { WIN_MESSAGES } from '../utils/messages'
-import type { GameState, LetterStatus, Stats } from '../types'
-
-const MAX_GUESSES = 6
-
-// Local display type — adds 'filled' for current-row tiles that have a letter
-export type TileDisplay = LetterStatus | 'filled'
-
-export interface BoardRow {
-  letters: string[]
-  statuses: TileDisplay[]
-  isRevealed: boolean
-}
+import type { GameState, Stats, GameStatus, GuessHistoryEntry } from '../types'
 
 export interface UseGameReturn {
   gameState: GameState
   stats: Stats
   currentGuess: string[]
-  cursorIndex: number
-  invalidRow: number       // -1 = none
-  revealingRow: number     // -1 = none
-  bounceRow: number        // -1 = none
+  invalidRow: number       // -1 = none, 0 = shake current row
   toastMessage: string | null
   toastFading: boolean
   showModal: boolean
   showStatsModal: boolean
-  keyboardStatuses: Record<string, LetterStatus>
   soundEnabled: boolean
   addLetter: (letter: string) => void
   deleteLetter: () => void
@@ -50,27 +35,19 @@ export function useGame(): UseGameReturn {
   const [gameState, setGameState] = useState<GameState>(() => buildInitialGameState())
   const [stats, setStats] = useState<Stats>(() => loadStats())
   const [currentGuess, setCurrentGuess] = useState<string[]>([])
-  const [cursorIndex, setCursorIndex] = useState(0)
   const [invalidRow, setInvalidRow] = useState(-1)
-  const [revealingRow, setRevealingRow] = useState(-1)
-  const [bounceRow, setBounceRow] = useState(-1)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [toastFading, setToastFading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [showStatsModal, setShowStatsModal] = useState(false)
 
-  // Sounds hook — integrated here so components don't import useSounds directly
   const sounds = useSounds()
-  // Keep a ref so callbacks (with [] deps) always call the latest sound functions
   const soundsRef = useRef(sounds)
   soundsRef.current = sounds
 
-  // Stable refs to prevent stale closures
   const stateRef = useRef(gameState)
   const statsRef = useRef(stats)
   const guessRef = useRef(currentGuess)
-  const cursorRef = useRef(cursorIndex)
-  const revealRef = useRef(revealingRow)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const toastTimers = useRef<ReturnType<typeof setTimeout>[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -78,8 +55,6 @@ export function useGame(): UseGameReturn {
   useEffect(() => { stateRef.current = gameState }, [gameState])
   useEffect(() => { statsRef.current = stats }, [stats])
   useEffect(() => { guessRef.current = currentGuess }, [currentGuess])
-  useEffect(() => { cursorRef.current = cursorIndex }, [cursorIndex])
-  useEffect(() => { revealRef.current = revealingRow }, [revealingRow])
 
   const schedule = useCallback((fn: () => void, delay: number) => {
     const id = setTimeout(fn, delay)
@@ -98,20 +73,13 @@ export function useGame(): UseGameReturn {
     }, 1800))
   }, [])
 
-  const resetCurrentGuess = useCallback((tgt: string) => {
-    const arr = Array.from(tgt).map(ch => ch === ' ' ? ' ' : '')
-    setCurrentGuess(arr)
-    const firstEditable = arr.findIndex(ch => ch === '')
-    setCursorIndex(firstEditable === -1 ? tgt.length : firstEditable)
-  }, [])
-
-  // Initialization — load saved state, do NOT auto-open modal
+  // Initialization — load saved state
   useEffect(() => {
     const saved = loadGameState()
     const state = saved ?? buildInitialGameState()
     setGameState(state)
     setStats(loadStats())
-    resetCurrentGuess(state.target)
+    setCurrentGuess(initCurrentGuess(state.answer, state.lockedLetters))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -124,150 +92,137 @@ export function useGame(): UseGameReturn {
   }, [])
 
   const addLetter = useCallback((letter: string) => {
-    if (stateRef.current.status !== 'playing') return
-    if (revealRef.current !== -1) return
-    const tgt = stateRef.current.target
-    const cursor = cursorRef.current
-    if (cursor >= tgt.length) return
-    const newGuess = [...guessRef.current]
-    newGuess[cursor] = letter.toUpperCase()
-    setCurrentGuess(newGuess)
-    soundsRef.current.playKeyClick()
-    // Find next empty non-space slot after cursor
-    let next = -1
-    for (let i = cursor + 1; i < tgt.length; i++) {
-      if (tgt[i] !== ' ' && newGuess[i] === '') {
-        next = i
-        break
+    const state = stateRef.current
+    if (state.status !== 'playing') return
+    const guess = guessRef.current
+    const locked = state.lockedLetters
+    const answer = state.answer
+
+    // Place at first empty editable slot (not locked, not space)
+    for (let i = 0; i < guess.length; i++) {
+      if (answer[i] === ' ') continue
+      if (locked[i] !== null) continue
+      if (guess[i] === '') {
+        const newGuess = [...guess]
+        newGuess[i] = letter.toUpperCase()
+        setCurrentGuess(newGuess)
+        soundsRef.current.playKeyClick()
+        return
       }
     }
-    setCursorIndex(next === -1 ? tgt.length : next)
   }, [])
 
   const deleteLetter = useCallback(() => {
-    if (stateRef.current.status !== 'playing') return
-    if (revealRef.current !== -1) return
-    const tgt = stateRef.current.target
-    const cursor = cursorRef.current
+    const state = stateRef.current
+    if (state.status !== 'playing') return
     const guess = guessRef.current
-    // Find rightmost filled (non-space) position to LEFT of cursorIndex
-    let pos = -1
-    const limit = Math.min(cursor, tgt.length) - 1
-    for (let i = limit; i >= 0; i--) {
-      if (tgt[i] !== ' ' && guess[i] !== '') {
-        pos = i
-        break
+    const locked = state.lockedLetters
+    const answer = state.answer
+
+    // Clear last filled editable slot
+    for (let i = guess.length - 1; i >= 0; i--) {
+      if (answer[i] === ' ') continue
+      if (locked[i] !== null) continue
+      if (guess[i] !== '') {
+        const newGuess = [...guess]
+        newGuess[i] = ''
+        setCurrentGuess(newGuess)
+        return
       }
     }
-    if (pos === -1) return
-    const newGuess = [...guess]
-    newGuess[pos] = ''
-    setCurrentGuess(newGuess)
-    setCursorIndex(pos)
   }, [])
 
   const submitGuess = useCallback(() => {
     const state = stateRef.current
     if (state.status !== 'playing') return
-    if (revealRef.current !== -1) return
-    const guess = guessRef.current
-    const tgt = state.target
-    const guessStr = guess.join('')
 
-    // Check if enough letters are filled
-    const filledCount = guess.filter(c => c !== '' && c !== ' ').length
-    const targetNonSpace = Array.from(tgt).filter(c => c !== ' ').length
-    if (filledCount < targetNonSpace) {
+    const guess = guessRef.current
+    const answer = state.answer
+    const locked = state.lockedLetters
+
+    // Check all editable slots are filled
+    const hasEmpty = guess.some((ch, i) =>
+      answer[i] !== ' ' && locked[i] === null && ch === ''
+    )
+    if (hasEmpty) {
       showToast('Not enough letters')
       soundsRef.current.playInvalid()
-      setInvalidRow(state.guesses.length)
+      setInvalidRow(0)
       schedule(() => setInvalidRow(-1), 600)
       return
     }
+
+    const guessStr = normalizeInput(guess.join(''))
 
     // Check validity
     if (!isValidGuess(guessStr.trim())) {
       showToast('Compound not found')
       soundsRef.current.playInvalid()
-      setInvalidRow(state.guesses.length)
+      setInvalidRow(0)
       schedule(() => setInvalidRow(-1), 600)
       return
     }
 
-    const normalizedGuess = normalizeInput(guessStr)
-    const fb = computeFeedback(normalizedGuess, tgt)
-    const newGuesses = [...state.guesses, normalizedGuess]
-    const newFeedbacks = [...state.feedbacks, fb]
+    const results = evaluateGuess(guessStr, answer)
+    const newLocked = getLockedLetters(locked, guess, results)
+    const newHistory: GuessHistoryEntry[] = [...state.guessHistory, { guess: guessStr, results }]
+    const newAttemptNumber = state.attemptNumber + 1
 
-    const mol = getDailyMolecule()
-    const won = normalizedGuess === tgt
-    const newStatus: GameState['status'] = won
+    const won = results.every(r => r === 'correct')
+    const newStatus: GameStatus = won
       ? 'won'
-      : newGuesses.length >= MAX_GUESSES ? 'lost' : 'playing'
+      : newAttemptNumber >= MAX_ATTEMPTS ? 'lost' : 'playing'
 
     const newState: GameState = {
-      dayIndex: state.dayIndex,
-      target: tgt,
-      guesses: newGuesses,
-      feedbacks: newFeedbacks,
+      ...state,
+      lockedLetters: newLocked,
+      attemptNumber: newAttemptNumber,
       status: newStatus,
-      revealedMolecule: newStatus !== 'playing' ? mol : null,
+      guessHistory: newHistory,
     }
 
     setGameState(newState)
     saveGameState(newState)
-
-    const rowIndex = state.guesses.length
     soundsRef.current.playSubmit()
-    setRevealingRow(rowIndex)
-    soundsRef.current.playTileReveal(fb.map(f => f.status), rowIndex)
 
-    schedule(() => {
-      setRevealingRow(-1)
+    if (newStatus === 'won') {
+      soundsRef.current.playWin()
+      showToast(WIN_MESSAGES[newAttemptNumber] ?? 'Well done!')
+      schedule(() => {
+        const updated = updateStats(statsRef.current, newState)
+        saveStats(updated)
+        setStats(updated)
+        setShowModal(true)
+        if ([7, 30, 100].includes(updated.currentStreak)) {
+          schedule(() => soundsRef.current.playStreakMilestone(updated.currentStreak), 800)
+        }
+      }, 1200)
+    } else if (newStatus === 'lost') {
+      const mol = getDailyMolecule()
+      showToast(`The answer was ${mol.display_name}`)
+      soundsRef.current.playLose()
+      schedule(() => {
+        const updated = updateStats(statsRef.current, newState)
+        saveStats(updated)
+        setStats(updated)
+        setShowModal(true)
+      }, 1000)
+    } else {
+      // Continue: reset guess with newly locked letters
+      setCurrentGuess(initCurrentGuess(answer, newLocked))
+    }
+  }, [schedule, showToast])
 
-      if (newStatus === 'won') {
-        const guessCount = newGuesses.length
-        setBounceRow(rowIndex)
-        soundsRef.current.playWin()
-        schedule(() => {
-          showToast(WIN_MESSAGES[guessCount] ?? 'Well done!')
-          setBounceRow(-1)
-          schedule(() => {
-            const updated = updateStats(statsRef.current, newState)
-            saveStats(updated)
-            setStats(updated)
-            setShowModal(true)
-            if ([7, 30, 100].includes(updated.currentStreak)) {
-              schedule(() => soundsRef.current.playStreakMilestone(updated.currentStreak), 800)
-            }
-          }, 400)
-        }, 600)
-      } else if (newStatus === 'lost') {
-        showToast(`The answer was ${mol.display_name}`)
-        soundsRef.current.playLose()
-        schedule(() => {
-          const updated = updateStats(statsRef.current, newState)
-          saveStats(updated)
-          setStats(updated)
-          setShowModal(true)
-        }, 1000)
-      } else {
-        resetCurrentGuess(tgt)
-      }
-    }, 600)
-  }, [schedule, showToast, resetCurrentGuess])
-
-  // Auto-focus hidden input when game is playing (enables mobile keyboard)
+  // Auto-focus hidden input when game is playing
   useEffect(() => {
     if (gameState.status === 'playing') {
       inputRef.current?.focus()
     }
   }, [gameState.status])
 
-  // Keyboard listener (reads current state via refs)
+  // Keyboard listener
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      // If event comes from the hidden input, it's already handled by onKeyDown
       if (e.target === inputRef.current) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
       if (e.key === 'Backspace') deleteLetter()
@@ -278,11 +233,6 @@ export function useGame(): UseGameReturn {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [addLetter, deleteLetter, submitGuess])
 
-  const keyboardStatuses = useMemo(
-    () => getKeyboardStatuses(gameState.feedbacks),
-    [gameState.feedbacks]
-  )
-
   const openModal = useCallback(() => setShowModal(true), [])
   const closeModal = useCallback(() => setShowModal(false), [])
   const openStatsModal = useCallback(() => setShowStatsModal(true), [])
@@ -292,15 +242,11 @@ export function useGame(): UseGameReturn {
     gameState,
     stats,
     currentGuess,
-    cursorIndex,
     invalidRow,
-    revealingRow,
-    bounceRow,
     toastMessage,
     toastFading,
     showModal,
     showStatsModal,
-    keyboardStatuses,
     soundEnabled: sounds.soundEnabled,
     addLetter,
     deleteLetter,

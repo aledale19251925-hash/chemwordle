@@ -33,18 +33,43 @@ export type TileStatus = LetterStatus;
 // GameStatus: overall game phase
 export type GameStatus = 'playing' | 'won' | 'lost';
 
+// LetterFeedback kept for computeFeedback / getKeyboardStatuses
 export interface LetterFeedback {
   letter: string;
   status: LetterStatus;
 }
 
+// ── Step 13: new game mechanic types ─────────────────────────────────────────
+
+export type LetterResult = 'correct' | 'present' | 'absent';
+
+export interface GuessHistoryEntry {
+  guess: string;
+  results: LetterResult[];
+}
+
+export interface AtomType {
+  symbol: string;
+  color: string;
+  label: string;
+}
+
+export interface MoleculeData {
+  formula: string;
+  formulaDisplay: string;
+  molecularWeight: number;
+  atomTypes: AtomType[];
+}
+
 export interface GameState {
   dayIndex: number;
-  target: string;
-  guesses: string[];
-  feedbacks: LetterFeedback[][];
+  answer: string;
+  lockedLetters: (string | null)[];
+  attemptNumber: number;
+  maxAttempts: number;
   status: GameStatus;
-  revealedMolecule: Molecule | null;
+  guessHistory: GuessHistoryEntry[];
+  moleculeData: MoleculeData | null;
 }
 
 export interface Stats {

@@ -2,14 +2,15 @@ import { useState } from 'react'
 import { useGame } from './hooks/useGame'
 import { useOnboarding } from './hooks/useOnboarding'
 import { getDailyMolecule } from './data/molecules'
+import { getAtomTypesFromFormula } from './utils/pubchem'
 import { Header } from './components/Header'
-import { GameBoard } from './components/GameBoard'
+import { SingleRowBoard } from './components/SingleRowBoard'
+import { AtomLegend } from './components/AtomLegend'
 import { Toast } from './components/Toast'
 import { Modal } from './components/Modal'
 import { StatsModal } from './components/StatsModal'
 import { HelpModal } from './components/HelpModal'
 import { MoleculeViewer3D } from './components/MoleculeViewer3D'
-import { AlphabetFeedback } from './components/AlphabetFeedback'
 import { OnboardingModal } from './components/OnboardingModal'
 
 export default function App() {
@@ -24,7 +25,6 @@ export default function App() {
     toastFading,
     showModal,
     showStatsModal,
-    keyboardStatuses,
     closeModal,
     openStatsModal,
     closeStatsModal,
@@ -34,16 +34,14 @@ export default function App() {
     inputRef,
   } = useGame()
 
-  // ── Stato locale: Help modal ────────────────────────────
+  // ── Local state: Help modal ─────────────────────────────
   const [rulesOpen, setRulesOpen] = useState(false)
   const { showOnboarding, dismissOnboarding } = useOnboarding()
 
-  // ── Dati derivati ───────────────────────────────────────
+  // ── Derived data ────────────────────────────────────────
   const mol = getDailyMolecule()
-  const target = gameState.target
-  const wordLength = target.length
-  const currentRowIndex = gameState.guesses.length
-  const invalidGuess = invalidRow === currentRowIndex
+  const atomTypes = getAtomTypesFromFormula(mol.formula)
+  const lastEntry = gameState.guessHistory[gameState.guessHistory.length - 1] ?? null
 
   return (
     <div
@@ -116,30 +114,29 @@ export default function App() {
         />
       </div>
 
-      {/* ── GAME BOARD ── */}
+      {/* ── ATOM LEGEND ── */}
+      <div style={{ flexShrink: 0, padding: '6px 0 2px' }}>
+        <AtomLegend atomTypes={atomTypes} />
+      </div>
+
+      {/* ── SINGLE ROW BOARD ── */}
       <div style={{
         flex: 1,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        overflowX: 'auto',
-        overflowY: 'hidden',
-        padding: '8px',
+        padding: '8px 16px',
       }}>
-        <GameBoard
-          guesses={gameState.guesses}
-          feedbacks={gameState.feedbacks}
+        <SingleRowBoard
+          answer={gameState.answer}
           currentGuess={currentGuess}
-          wordLength={wordLength}
-          target={target}
-          gameStatus={gameState.status}
-          invalidGuess={invalidGuess}
+          lockedLetters={gameState.lockedLetters}
+          attemptNumber={gameState.attemptNumber}
+          maxAttempts={gameState.maxAttempts}
+          lastResults={lastEntry?.results ?? null}
+          status={gameState.status}
+          invalidGuess={invalidRow !== -1}
         />
-      </div>
-
-      {/* ── ALFABETO FEEDBACK ── */}
-      <div style={{ flexShrink: 0, paddingBottom: 8 }}>
-        <AlphabetFeedback keyStatuses={keyboardStatuses} />
       </div>
 
       {/* ── TOAST ── */}
@@ -149,7 +146,7 @@ export default function App() {
       <Modal
         visible={showModal && (gameState.status === 'won' || gameState.status === 'lost')}
         gameStatus={gameState.status as 'won' | 'lost'}
-        molecule={gameState.revealedMolecule}
+        molecule={mol}
         gameState={gameState}
         stats={stats}
         onClose={closeModal}

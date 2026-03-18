@@ -1,5 +1,7 @@
-import type { LetterFeedback, LetterStatus, GameState, Stats } from '../types';
+import type { LetterFeedback, LetterStatus, LetterResult, GameState, GuessHistoryEntry, Stats } from '../types';
 import { getDailyMolecule } from '../data/molecules';
+
+export const MAX_ATTEMPTS = 5;
 
 export function normalizeInput(raw: string): string {
   return raw.trim().toUpperCase()
@@ -48,12 +50,40 @@ export function getKeyboardStatuses(feedbacks: LetterFeedback[][]): Record<strin
   return map;
 }
 
+// ── Step 13: new game logic ───────────────────────────────────────────────────
+
+export function evaluateGuess(guess: string, answer: string): LetterResult[] {
+  return computeFeedback(guess, answer).map(f => f.status as LetterResult);
+}
+
+export function getLockedLetters(
+  prevLocked: (string | null)[],
+  guess: string[],
+  results: LetterResult[],
+): (string | null)[] {
+  return prevLocked.map((existing, i) => {
+    if (existing !== null) return existing;
+    if (results[i] === 'correct') return guess[i];
+    return null;
+  });
+}
+
+export function initCurrentGuess(answer: string, lockedLetters: (string | null)[]): string[] {
+  return answer.split('').map((char, i) => {
+    if (char === ' ') return ' ';
+    if (lockedLetters[i] !== null) return lockedLetters[i]!;
+    return '';
+  });
+}
+
+// ── Shared utilities ──────────────────────────────────────────────────────────
+
 export function getDayIndex(): number {
   return Math.floor(Date.now() / 86_400_000);
 }
 
 export function isGameOver(state: GameState): boolean {
-  return state.status !== 'playing' || state.guesses.length >= 6;
+  return state.status !== 'playing';
 }
 
 export function checkWin(guess: string, target: string): boolean {
@@ -82,7 +112,7 @@ export function updateStats(stats: Stats, state: GameState): Stats {
   const dist = [...stats.guessDistribution];
 
   if (won) {
-    const idx = state.guesses.length - 1; // 0-indexed
+    const idx = state.guessHistory.length - 1; // 0-indexed
     dist[idx] = (dist[idx] ?? 0) + 1;
   }
 
@@ -102,18 +132,21 @@ export function updateStats(stats: Stats, state: GameState): Stats {
 }
 
 export function buildInitialGameState(): GameState {
+  const mol = getDailyMolecule();
+  const answer = mol.normalized_name;
   return {
     dayIndex: getDayIndex(),
-    target: getDailyMolecule().normalized_name,
-    guesses: [],
-    feedbacks: [],
+    answer,
+    lockedLetters: new Array(answer.length).fill(null),
+    attemptNumber: 0,
+    maxAttempts: MAX_ATTEMPTS,
     status: 'playing',
-    revealedMolecule: null,
+    guessHistory: [],
+    moleculeData: null,
   };
 }
 
-// Legacy helper kept for internal use — new callers should use share.ts buildShareText
-const SHARE_EMOJI: Record<LetterStatus, string> = {
+const SHARE_EMOJI: Record<LetterResult | 'empty', string> = {
   correct: '🟩',
   present: '🟨',
   absent:  '⬛',
@@ -121,9 +154,9 @@ const SHARE_EMOJI: Record<LetterStatus, string> = {
 };
 
 export function buildShareText(state: GameState): string {
-  const score = state.status === 'won' ? `${state.guesses.length}/6` : 'X/6';
-  const grid = state.feedbacks
-    .map(row => row.map(f => SHARE_EMOJI[f.status]).join(''))
+  const score = state.status === 'won' ? `${state.guessHistory.length}/${state.maxAttempts}` : `X/${state.maxAttempts}`;
+  const grid = state.guessHistory
+    .map((entry: GuessHistoryEntry) => entry.results.map(r => SHARE_EMOJI[r]).join(''))
     .join('\n');
   return `ChemWordle #${state.dayIndex} — ${score} 🧪\n${grid}\nchemwordle.app ⚗️`;
 }

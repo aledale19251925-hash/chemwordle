@@ -22,11 +22,11 @@ function LoadingState() {
       position: 'absolute', inset: 0,
       display: 'flex', flexDirection: 'column',
       alignItems: 'center', justifyContent: 'center',
-      gap: 12, background: '#f0fdf4',
+      gap: 12, background: '#0d1a0d',
     }}>
       <div style={{
         width: 36, height: 36, borderRadius: '50%',
-        border: '3px solid #dcfce7',
+        border: '3px solid #1a2a1a',
         borderTopColor: '#16a34a',
         animation: 'spin 0.8s linear infinite',
       }} />
@@ -42,9 +42,9 @@ function ErrorState() {
     <div style={{
       position: 'absolute', inset: 0,
       display: 'flex', alignItems: 'center',
-      justifyContent: 'center', background: '#f0fdf4',
+      justifyContent: 'center', background: '#0d1a0d',
     }}>
-      <span style={{ color: '#dc2626', fontSize: '0.82rem' }}>
+      <span style={{ color: '#f87171', fontSize: '0.82rem' }}>
         ⚠️ Could not load molecule structure
       </span>
     </div>
@@ -103,7 +103,7 @@ export function MoleculeViewer3D({ pubchemCid, moleculeName }: MoleculeViewer3DP
 
         const $3Dmol = await import('3dmol')
         const viewer = $3Dmol.createViewer(containerRef.current!, {
-          backgroundColor: '#f0fdf4',
+          backgroundColor: '#0d1a0d',
           antialias: true,
           id: `viewer-${pubchemCid}`,
         })
@@ -142,11 +142,11 @@ export function MoleculeViewer3D({ pubchemCid, moleculeName }: MoleculeViewer3DP
       aria-label={`3D structure of ${moleculeName}`}
       style={{
         width: '100%',
-        height: 'min(40vh, 280px)',
+        height: `${Math.min(300, Math.max(200, Math.floor((typeof window !== 'undefined' ? window.innerHeight : 700) * 0.32)))}px`,
         position: 'relative',
         borderRadius: 16,
         overflow: 'hidden',
-        background: '#f0fdf4',
+        background: '#0d1a0d',
       }}
     >
       {loading && <LoadingState />}

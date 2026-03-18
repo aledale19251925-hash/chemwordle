@@ -26,7 +26,7 @@ export function Modal({ visible, gameStatus, molecule, stats, gameState, onClose
   }, [visible])
 
   const won = gameStatus === 'won'
-  const guessCount = gameState.guesses.length
+  const guessCount = gameState.guessHistory.length
   const winPct = stats.gamesPlayed > 0
     ? Math.round((stats.gamesWon / stats.gamesPlayed) * 100)
     : 0
