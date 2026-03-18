@@ -18,11 +18,11 @@ const EMOJI: Record<string, string> = {
  *   chemwordle.app ⚗️
  */
 export function buildShareText(gameState: GameState): string {
-  const name = gameState.revealedMolecule?.display_name ?? gameState.target;
-  const score = gameState.status === 'won' ? `${gameState.feedbacks.length}/6` : 'X/6';
+  const name = gameState.answer;
+  const score = gameState.status === 'won' ? `${gameState.guessHistory.length}/${gameState.maxAttempts}` : `X/${gameState.maxAttempts}`;
   const header = `ChemWordle #${gameState.dayIndex} — ${name} — ${score} 🧪`;
-  const grid = gameState.feedbacks
-    .map(row => row.map(f => EMOJI[f.status] ?? '⬛').join(''))
+  const grid = gameState.guessHistory
+    .map(entry => entry.results.map(r => EMOJI[r] ?? '⬛').join(''))
     .join('\n');
   return [header, grid, 'chemwordle.app ⚗️'].join('\n');
 }

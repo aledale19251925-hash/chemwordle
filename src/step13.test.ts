@@ -1,6 +1,7 @@
 import { test, expect, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createElement } from 'react'
+import type { LetterResult } from './types'
 
 // ── getLockedLetters ──────────────────────────────────────────────────────────
 
@@ -9,7 +10,7 @@ import { getLockedLetters, initCurrentGuess, MAX_ATTEMPTS } from './utils/gameLo
 test('1 — getLockedLetters locks correct positions from a guess', () => {
   const prevLocked: (string | null)[] = [null, null, null, null, null]
   const guess = ['W', 'A', 'T', 'E', 'R']
-  const results = ['correct', 'absent', 'correct', 'absent', 'absent'] as const
+  const results = ['correct', 'absent', 'correct', 'absent', 'absent'] as LetterResult[]
   const newLocked = getLockedLetters(prevLocked, guess, results)
   expect(newLocked[0]).toBe('W')   // correct → locked
   expect(newLocked[1]).toBeNull()  // absent → not locked
@@ -21,7 +22,7 @@ test('1 — getLockedLetters locks correct positions from a guess', () => {
 test('2 — getLockedLetters preserves already-locked positions', () => {
   const prevLocked: (string | null)[] = ['W', null, 'T', null, null]
   const guess = ['W', 'A', 'T', 'E', 'R']
-  const results = ['correct', 'absent', 'correct', 'correct', 'absent'] as const
+  const results = ['correct', 'absent', 'correct', 'correct', 'absent'] as LetterResult[]
   const newLocked = getLockedLetters(prevLocked, guess, results)
   expect(newLocked[0]).toBe('W')   // was already locked
   expect(newLocked[2]).toBe('T')   // was already locked
