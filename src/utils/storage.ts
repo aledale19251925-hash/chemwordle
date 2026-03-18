@@ -119,6 +119,14 @@ export function loadStats(): Stats {
   }
 }
 
+// ── Dev helpers ──────────────────────────────────────────────────────────────
+
+/** Clears all ChemWordle data from localStorage. Useful for dev/testing. */
+export function clearGameState(): void {
+  localStorage.removeItem(KEYS.state)
+  localStorage.removeItem(KEYS.stats)
+}
+
 // ── Date helpers ──────────────────────────────────────────────────────────────
 
 /** Returns today's date as "YYYY-MM-DD" (local timezone). */

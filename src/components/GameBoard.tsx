@@ -1,4 +1,4 @@
-import { type ReactNode } from 'react'
+import { type ReactNode, useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Tile } from './Tile'
 import type { TileStatus, GameStatus, LetterFeedback } from '../types'
@@ -79,15 +79,22 @@ function RowWrapper({ children, shake }: { children: ReactNode; shake: boolean }
 export function GameBoard(props: GameBoardProps) {
   const { wordLength, invalidGuess, tileSize } = props
 
-  const TILE_SIZE = tileSize ?? (() => {
-    if (wordLength <= 6)  return 56
-    if (wordLength <= 9)  return 52
-    if (wordLength <= 12) return 46
-    if (wordLength <= 15) return 40
-    return 36
-  })()
+  // Force re-render on window resize so tile size stays correct
+  const [, forceUpdate] = useState(0)
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1)
+    window.addEventListener('resize', handler)
+    return () => window.removeEventListener('resize', handler)
+  }, [])
 
-  const GAP = wordLength <= 9 ? 6 : 4
+  const GAP = 5
+
+  const TILE_SIZE = tileSize ?? (() => {
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 390
+    const availableWidth = viewportWidth - 32 // 16px padding per side
+    const maxByViewport = Math.floor((availableWidth - (wordLength - 1) * GAP) / wordLength)
+    return Math.min(62, Math.max(40, maxByViewport))
+  })()
   const rows = buildRows(props)
   const gridWidth = wordLength * TILE_SIZE + (wordLength - 1) * GAP
 

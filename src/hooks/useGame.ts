@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
+import { useState, useEffect, useCallback, useMemo, useRef, type RefObject } from 'react'
 import { getDailyMolecule } from '../data/molecules'
 import { isValidGuess } from '../data/validWords'
 import {
@@ -43,6 +43,7 @@ export interface UseGameReturn {
   openStatsModal: () => void
   closeStatsModal: () => void
   toggleSound: () => void
+  inputRef: RefObject<HTMLInputElement>
 }
 
 export function useGame(): UseGameReturn {
@@ -72,6 +73,7 @@ export function useGame(): UseGameReturn {
   const revealRef = useRef(revealingRow)
   const timersRef = useRef<ReturnType<typeof setTimeout>[]>([])
   const toastTimers = useRef<ReturnType<typeof setTimeout>[]>([])
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { stateRef.current = gameState }, [gameState])
   useEffect(() => { statsRef.current = stats }, [stats])
@@ -255,9 +257,18 @@ export function useGame(): UseGameReturn {
     }, 600)
   }, [schedule, showToast, resetCurrentGuess])
 
+  // Auto-focus hidden input when game is playing (enables mobile keyboard)
+  useEffect(() => {
+    if (gameState.status === 'playing') {
+      inputRef.current?.focus()
+    }
+  }, [gameState.status])
+
   // Keyboard listener (reads current state via refs)
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
+      // If event comes from the hidden input, it's already handled by onKeyDown
+      if (e.target === inputRef.current) return
       if (e.ctrlKey || e.metaKey || e.altKey) return
       if (e.key === 'Backspace') deleteLetter()
       else if (e.key === 'Enter') submitGuess()
@@ -299,5 +310,6 @@ export function useGame(): UseGameReturn {
     openStatsModal,
     closeStatsModal,
     toggleSound: sounds.toggleSound,
+    inputRef,
   }
 }

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { useGame } from './hooks/useGame'
 import { getDailyMolecule } from './data/molecules'
 import { Header } from './components/Header'
@@ -26,22 +26,14 @@ export default function App() {
     closeModal,
     openStatsModal,
     closeStatsModal,
+    addLetter,
+    deleteLetter,
+    submitGuess,
+    inputRef,
   } = useGame()
 
   // ── Stato locale: Help modal ────────────────────────────
   const [rulesOpen, setRulesOpen] = useState(false)
-
-  // ── vh fix per mobile ───────────────────────────────────
-  useEffect(() => {
-    function setVh() {
-      document.documentElement.style.setProperty(
-        '--vh', `${window.innerHeight * 0.01}px`
-      )
-    }
-    setVh()
-    window.addEventListener('resize', setVh, { passive: true })
-    return () => window.removeEventListener('resize', setVh)
-  }, [])
 
   // ── Dati derivati ───────────────────────────────────────
   const mol = getDailyMolecule()
@@ -51,13 +43,55 @@ export default function App() {
   const invalidGuess = invalidRow === currentRowIndex
 
   return (
-    <div style={{
-      height: 'calc(var(--vh, 1vh) * 100)',
-      display: 'flex',
-      flexDirection: 'column',
-      background: '#f8fdf8',
-      overflow: 'hidden',
-    }}>
+    <div
+      style={{
+        height: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        background: '#f8fdf8',
+        overflow: 'hidden',
+      }}
+      onClick={() => {
+        if (gameState.status === 'playing') {
+          inputRef.current?.focus()
+        }
+      }}
+    >
+      {/* Hidden input — keeps mobile keyboard accessible */}
+      <input
+        ref={inputRef}
+        type="text"
+        inputMode="text"
+        autoComplete="off"
+        autoCorrect="off"
+        autoCapitalize="characters"
+        spellCheck={false}
+        aria-hidden="true"
+        style={{
+          position: 'fixed',
+          opacity: 0,
+          pointerEvents: 'none',
+          width: 1,
+          height: 1,
+          top: 0,
+          left: 0,
+          zIndex: -1,
+          fontSize: 16,
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Backspace') { e.preventDefault(); deleteLetter() }
+          else if (e.key === 'Enter') { e.preventDefault(); submitGuess() }
+        }}
+        onInput={(e) => {
+          const input = e.currentTarget
+          const value = input.value
+          if (value.length > 0) {
+            const lastChar = value[value.length - 1].toUpperCase()
+            if (/^[A-Z]$/.test(lastChar)) addLetter(lastChar)
+            input.value = ''
+          }
+        }}
+      />
 
       {/* ── HEADER ── */}
       <Header
