@@ -11,7 +11,7 @@ interface GameBoardProps {
   target: string
   gameStatus: GameStatus
   invalidGuess: boolean
-  tileSize?: number
+  tileSize?: number  // optional override; if omitted, computed from wordLength
 }
 
 type RowData = {
@@ -30,7 +30,6 @@ function buildRows({
 }: GameBoardProps): RowData[] {
   const rows: RowData[] = []
 
-  // Rows already played
   for (let i = 0; i < guesses.length; i++) {
     const letters = guesses[i].split('')
     const statuses = (feedbacks[i] as (LetterFeedback | TileStatus)[]).map((f, j) => {
@@ -41,7 +40,6 @@ function buildRows({
     rows.push({ letters, statuses, isCurrentRow: false })
   }
 
-  // Current (active) row
   if (gameStatus === 'playing' && guesses.length < 6) {
     const letters = Array.from({ length: wordLength }, (_, j) =>
       target[j] === ' ' ? ' ' : (currentGuess[j] ?? '')
@@ -53,7 +51,6 @@ function buildRows({
     rows.push({ letters, statuses, isCurrentRow: true })
   }
 
-  // Future empty rows
   while (rows.length < 6) {
     rows.push({
       letters: Array(wordLength).fill(''),
@@ -67,7 +64,6 @@ function buildRows({
   return rows
 }
 
-// Wrapper per ogni cella — gestisce shake animation
 function RowWrapper({ children, shake }: { children: ReactNode; shake: boolean }) {
   return (
     <motion.div
@@ -80,11 +76,18 @@ function RowWrapper({ children, shake }: { children: ReactNode; shake: boolean }
   )
 }
 
-const GAP = 6
-
 export function GameBoard(props: GameBoardProps) {
   const { wordLength, invalidGuess, tileSize } = props
-  const TILE_SIZE = tileSize ?? 52
+
+  const TILE_SIZE = tileSize ?? (() => {
+    if (wordLength <= 6)  return 56
+    if (wordLength <= 9)  return 52
+    if (wordLength <= 12) return 46
+    if (wordLength <= 15) return 40
+    return 36
+  })()
+
+  const GAP = wordLength <= 9 ? 6 : 4
   const rows = buildRows(props)
   const gridWidth = wordLength * TILE_SIZE + (wordLength - 1) * GAP
 

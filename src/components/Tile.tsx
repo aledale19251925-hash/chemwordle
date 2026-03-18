@@ -10,11 +10,11 @@ interface TileProps {
 }
 
 const COLORS: Record<string, { bg: string; border: string; color: string }> = {
-  correct: { bg: '#15803d', border: '#15803d', color: '#ffffff' },
-  present: { bg: '#854d0e', border: '#854d0e', color: '#ffffff' },
-  absent:  { bg: '#1e1e1e', border: '#404040', color: '#888888' },
-  current: { bg: 'transparent', border: '#4ade80', color: '#e8f5e8' },
-  empty:   { bg: 'transparent', border: '#2d5a2d', color: '#e8f5e8' },
+  correct: { bg: '#16a34a', border: '#16a34a', color: '#ffffff' },
+  present: { bg: '#d97706', border: '#d97706', color: '#ffffff' },
+  absent:  { bg: '#e5e7eb', border: '#e5e7eb', color: '#9ca3af' },
+  current: { bg: '#ffffff', border: '#16a34a', color: '#1a1a1a' },
+  empty:   { bg: '#ffffff', border: '#d1d5db', color: '#1a1a1a' },
 }
 
 export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TileProps) {
@@ -45,7 +45,7 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
     return (
       <div
         data-testid="tile"
-        style={{ width: 52, height: 52, background: '#1a1a1a', borderRadius: 8 }}
+        style={{ width: 52, height: 52, background: '#f3f4f6', borderRadius: 8 }}
       />
     )
   }
@@ -63,7 +63,7 @@ export function Tile({ letter, status, delay = 0, isCurrentRow = false }: TilePr
           : letter && status === 'current'
           ? { scale: [1, 1.12, 1] }
           : isPulse
-          ? { borderColor: ['#2d5a2d', '#4ade80', '#2d5a2d'] }
+          ? { borderColor: ['#d1d5db', '#16a34a', '#d1d5db'] }
           : {}
       }
       transition={

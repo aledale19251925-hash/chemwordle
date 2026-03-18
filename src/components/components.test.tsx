@@ -98,7 +98,7 @@ describe('Tile', () => {
   it('4 — Tile status correct ha colore corretto', () => {
     render(<Tile letter="H" status="correct" />)
     const tile = screen.getByText('H').closest('div')
-    expect(tile).toHaveStyle({ backgroundColor: '#15803d' })
+    expect(tile).toHaveStyle({ backgroundColor: '#16a34a' })
   })
 })
 

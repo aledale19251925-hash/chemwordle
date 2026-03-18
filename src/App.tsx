@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useGame } from './hooks/useGame'
-import { useWindowWidth } from './hooks/useWindowWidth'
+import { getDailyMolecule } from './data/molecules'
 import { Header } from './components/Header'
 import { GameBoard } from './components/GameBoard'
-import { Keyboard } from './components/Keyboard'
 import { Toast } from './components/Toast'
 import { Modal } from './components/Modal'
 import { StatsModal } from './components/StatsModal'
 import { HelpModal } from './components/HelpModal'
+import { MoleculeViewer3D } from './components/MoleculeViewer3D'
+import { AlphabetFeedback } from './components/AlphabetFeedback'
 
 export default function App() {
 
-  // ── Game state (unica fonte di verità) ──────────────────
+  // ── Game state ──────────────────────────────────────────
   const {
     gameState,
     stats,
@@ -22,11 +23,6 @@ export default function App() {
     showModal,
     showStatsModal,
     keyboardStatuses,
-    soundEnabled,
-    toggleSound,
-    addLetter,
-    deleteLetter,
-    submitGuess,
     closeModal,
     openStatsModal,
     closeStatsModal,
@@ -35,11 +31,7 @@ export default function App() {
   // ── Stato locale: Help modal ────────────────────────────
   const [rulesOpen, setRulesOpen] = useState(false)
 
-  // ── Responsive tile size ────────────────────────────────
-  const windowWidth = useWindowWidth()
-  const tileSize = windowWidth < 380 ? 44 : 52
-
-  // ── vh fix per mobile (100dvh fallback) ─────────────────
+  // ── vh fix per mobile ───────────────────────────────────
   useEffect(() => {
     function setVh() {
       document.documentElement.style.setProperty(
@@ -51,19 +43,19 @@ export default function App() {
     return () => window.removeEventListener('resize', setVh)
   }, [])
 
-  // ── Calcolo dati derivati ───────────────────────────────
+  // ── Dati derivati ───────────────────────────────────────
+  const mol = getDailyMolecule()
   const target = gameState.target
   const wordLength = target.length
   const currentRowIndex = gameState.guesses.length
   const invalidGuess = invalidRow === currentRowIndex
 
-  // ── Render ──────────────────────────────────────────────
   return (
     <div style={{
       height: 'calc(var(--vh, 1vh) * 100)',
       display: 'flex',
       flexDirection: 'column',
-      background: '#0a0f0a',
+      background: '#f8fdf8',
       overflow: 'hidden',
     }}>
 
@@ -75,6 +67,14 @@ export default function App() {
         onHelpClick={() => setRulesOpen(true)}
       />
 
+      {/* ── VIEWER 3D ── */}
+      <div style={{ padding: '8px 16px 0', flexShrink: 0 }}>
+        <MoleculeViewer3D
+          pubchemCid={mol.pubchem_cid}
+          moleculeName={mol.display_name}
+        />
+      </div>
+
       {/* ── GAME BOARD ── */}
       <div style={{
         flex: 1,
@@ -83,7 +83,7 @@ export default function App() {
         justifyContent: 'center',
         overflowX: 'auto',
         overflowY: 'hidden',
-        padding: '0 8px',
+        padding: '8px',
       }}>
         <GameBoard
           guesses={gameState.guesses}
@@ -93,27 +93,16 @@ export default function App() {
           target={target}
           gameStatus={gameState.status}
           invalidGuess={invalidGuess}
-          tileSize={tileSize}
         />
       </div>
 
-      {/* ── KEYBOARD ── */}
-      <div style={{ height: 168, flexShrink: 0 }}>
-        <Keyboard
-          onKey={addLetter}
-          onEnter={submitGuess}
-          onDelete={deleteLetter}
-          keyStatuses={keyboardStatuses}
-          soundEnabled={soundEnabled}
-          onToggleSound={toggleSound}
-        />
+      {/* ── ALFABETO FEEDBACK ── */}
+      <div style={{ flexShrink: 0, paddingBottom: 8 }}>
+        <AlphabetFeedback keyStatuses={keyboardStatuses} />
       </div>
 
       {/* ── TOAST ── */}
-      <Toast
-        message={toastMessage}
-        fading={toastFading}
-      />
+      <Toast message={toastMessage} fading={toastFading} />
 
       {/* ── RESULT MODAL ── */}
       <Modal
@@ -133,7 +122,7 @@ export default function App() {
         onClose={closeStatsModal}
       />
 
-      {/* ── HELP / RULES MODAL ── */}
+      {/* ── HELP MODAL ── */}
       <HelpModal
         visible={rulesOpen}
         onClose={() => setRulesOpen(false)}

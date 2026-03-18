@@ -10,12 +10,16 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
-  background: #0a0f0a;
+  background: #f8fdf8;
 }
 
 body {
   font-family: system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
-  color: #e8f5e8;
+  color: #1a1a1a;
   overscroll-behavior: none;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
